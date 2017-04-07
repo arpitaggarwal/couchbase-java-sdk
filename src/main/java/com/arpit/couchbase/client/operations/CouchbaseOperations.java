@@ -21,24 +21,38 @@ import com.couchbase.client.protocol.views.ViewRow;
 
 public class CouchbaseOperations {
 
+	private static final String COUCHBASE_HOST = "127.0.0.1";
+	private static final String COUCHBASE_BUCKET = "default";
+	private static final String COUCHBASE_VIEWMODE = "production"; // "development";
+
+	private static final String COUCHBASE_DESIGN_DOCUMENT_NAME = "dev_arpit";
+	private static final String COUCHBASE_VIEW_NAME = "new";
+
 	public static void main(String[] args) throws URISyntaxException,
 			IOException {
 		Cluster cluster = CouchbaseCluster.create();
 		List<URI> list = new ArrayList<>();
-		list.add(URI.create("http://127.0.0.1:8091/pools"));
-		// System.setProperty("viewmode", "development");
-		CouchbaseClient client = new CouchbaseClient(list, "default", "");
-		View view = client.getView("dev_arpit", "new");
+		list.add(URI.create("http://" + COUCHBASE_HOST + ":8091/pools"));
+		CouchbaseClient client = getAllKeys(list);
+		DesignDocument designDoc = createDesignDocument();
+		client.createDesignDoc(designDoc);
+		Bucket defaultBucket = cluster.openBucket(COUCHBASE_BUCKET);
+		createDocument(defaultBucket);
+		cluster.disconnect();
+	}
+
+	private static CouchbaseClient getAllKeys(List<URI> list)
+			throws IOException {
+		System.setProperty("viewmode", COUCHBASE_VIEWMODE);
+		CouchbaseClient client = new CouchbaseClient(list, COUCHBASE_BUCKET, "");
+		View view = client.getView(COUCHBASE_DESIGN_DOCUMENT_NAME,
+				COUCHBASE_VIEW_NAME);
 		Query query = new Query();
 		ViewResponse viewResponse = client.query(view, query);
 		for (ViewRow viewRow : viewResponse) {
 			System.out.println(viewRow.getKey());
 		}
-		DesignDocument designDoc = createDesignDocument();
-		client.createDesignDoc(designDoc);
-		Bucket defaultBucket = cluster.openBucket("default");
-		createDocument(defaultBucket);
-		cluster.disconnect();
+		return client;
 	}
 
 	public static void createDocument(final Bucket bucket) {
